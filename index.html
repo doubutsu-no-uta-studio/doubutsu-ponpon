@@ -1,0 +1,193 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  
+  <title>どうぶつぽんぽん｜もりのどうぶつ</title>
+  <link rel="stylesheet" href="style.css?v=12">
+</head>
+<body>
+
+  <main class="game-container">
+
+    <div class="title-bar">
+        <h1>🌳 もりのどうぶつ</h1>
+
+        <div class="title-buttons">
+            <button id="bgm-button">♫ BGM</button>
+            <button id="pause-button">Ⅱ ポーズ</button>
+            <button id="reset-button" class="icon-button" aria-label="ゲームを おわる（リセット）">↻</button>
+        </div>
+    </div>
+
+    <header class="game-header">
+      <div class="score-box">
+        <span class="label">スコア</span>
+        <strong id="score">0</strong>
+        <span class="label">
+          🏆 ベスト：
+          <span id="high-score">0</span>
+        </span>
+      </div>
+
+      <button id="evolve-button" class="evolve-button">🐾 しんか</button>
+
+      <div class="next-box">
+        <span class="label">つぎ</span>
+        <div id="next-animal">🦉</div>
+      </div>
+    </header>
+
+    <div id="game-board">
+    <p>ここに どうぶつが おちるよ</p>
+
+    <div id="danger-line"></div>
+    <div id="danger-message"></div>
+
+    <div id="game-over-screen">
+        <div class="result-head">
+            <h2>ゲームオーバー！</h2>
+            <p>スコア：<span id="final-score">0</span></p>
+        </div>
+
+        <!-- だれが あそんだ？（選んで「きろくする」を押すまで、誰のスコアにもならない） -->
+        <div id="result-player" class="result-player">
+            <p class="result-player-title">だれが あそんだ？</p>
+            <div id="result-list-wrap" class="result-list-wrap">
+                <ul id="result-player-list" class="result-player-list"></ul>
+                <!-- スクロールできるときだけ表示する、右端の細いスクロールバー（常時表示） -->
+                <div class="result-scroll-track" aria-hidden="true"><div class="result-scroll-thumb"></div></div>
+            </div>
+            <p id="result-scroll-hint" class="result-scroll-hint">↕ スクロールして ほかのひとも みる</p>
+            <p id="result-player-empty" class="result-player-empty">プレイヤーが まだ いないよ</p>
+            <button id="result-add-player" class="result-add-btn">＋ あたらしいプレイヤーを ついか</button>
+            <button id="result-confirm" class="result-confirm-btn">この ひとの きろくに する</button>
+            <p id="result-message" class="result-message" role="status"></p>
+        </div>
+
+        <div class="result-actions">
+            <!-- オンライン登録（「きろくに する」を押したあとで、登録できる得点があるときだけ表示） -->
+            <div id="result-register" class="result-register" hidden>
+                <button id="result-register-btn" class="result-register-btn">🏆 みんなのランキングに とうろく</button>
+                <p id="result-register-status" class="result-register-status" role="status"></p>
+            </div>
+            <button id="retry-button">もういちど あそぶ</button>
+            <button id="to-title-button">タイトルへ</button>
+        </div>
+    </div>
+    </div>
+
+  </main>
+
+  <!-- タイトル画面（ゲーム画面の上に重ねて表示） -->
+  <div id="title-screen">
+    <div class="title-main">
+      <h1 class="title-logo">どうぶつぽんぽん</h1>
+      <div class="title-animals" aria-hidden="true">
+        <img src="assets/images/owl.png" alt="">
+        <img src="assets/images/redpanda.png" alt="">
+        <img src="assets/images/sloth.png" alt="">
+        <img src="assets/images/mandrill.png" alt="">
+      </div>
+    </div>
+    <div class="title-menu">
+      <button id="play-button" class="title-btn title-btn-play">あそぶ</button>
+      <button id="ranking-button" class="title-btn title-btn-ranking">🏆 ランキング</button>
+      <button id="players-button" class="title-btn title-btn-sub">👥 プレイヤー</button>
+    </div>
+  </div>
+
+  <!-- プレイヤー管理画面（独立した画面） -->
+  <div id="players-screen" class="hidden">
+    <div class="wood-board">
+      <h2 class="board-title">👥 プレイヤー</h2>
+      <p id="players-note" class="board-note"></p>
+      <ul id="players-list"></ul>
+      <div class="board-actions">
+        <button id="player-add-button" class="title-btn title-btn-play">＋ あたらしい プレイヤー</button>
+        <button id="players-back-button" class="title-btn title-btn-ranking">もどる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 動物の進化一覧（ゲーム中の「しんか」ボタンから開く。開いている間、ゲームは止まる） -->
+  <div id="evolve-screen" class="hidden">
+    <div class="evo-board">
+      <h2 class="evo-title">どうぶつの しんか</h2>
+      <p class="evo-note">おなじ どうぶつを ふたつ あわせると、つぎの どうぶつに しんかするよ</p>
+      <div id="evo-scroll" class="evo-scroll">
+        <ol id="evo-list" class="evo-list"></ol>
+      </div>
+      <p id="evo-hint" class="evo-hint" hidden>← よこに スクロールできるよ →</p>
+      <button id="evo-close" class="evo-close" type="button">ゲームに もどる</button>
+    </div>
+  </div>
+
+  <!-- ランキング一覧画面（タイトルの「ランキング」から開く） -->
+  <div id="ranking-screen" class="hidden">
+    <div class="rank-board">
+      <div class="rank-head">
+        <h2 class="rank-title">🏆 みんなの ランキング</h2>
+        <button id="rank-refresh" class="rank-refresh" type="button">↻ こうしん</button>
+      </div>
+      <p class="rank-sub">うえから 20にん</p>
+
+      <div class="rank-paper">
+        <div id="rank-list-wrap" class="rank-list-wrap">
+          <ol id="rank-list" class="rank-list"></ol>
+          <div class="rank-scroll-track" aria-hidden="true"><div class="rank-scroll-thumb"></div></div>
+        </div>
+        <div id="rank-state" class="rank-state" hidden>
+          <img id="rank-state-img" class="rank-state-img" alt="" src="assets/images/owl.png">
+          <p id="rank-state-text" class="rank-state-text" role="status"></p>
+          <button id="rank-state-retry" class="rank-state-retry" type="button" hidden>もういちど</button>
+        </div>
+      </div>
+
+      <!-- とうろくまち：通信できなくて、まだ送れていない登録（プレイヤーごと）。あるときだけ表示 -->
+      <div id="rank-pending" class="rank-pending" hidden>
+        <p class="rank-pending-title">⏳ とうろくまち</p>
+        <ul id="rank-pending-list" class="rank-pending-list"></ul>
+      </div>
+
+      <div class="rank-foot">
+        <div class="rank-me">
+          <div class="rank-me-line">
+            <label for="rank-player-select" class="rank-me-label">プレイヤー</label>
+            <select id="rank-player-select" class="rank-select"></select>
+          </div>
+          <div id="rank-me-body" class="rank-me-body"></div>
+          <p id="rank-me-note" class="rank-me-note" hidden></p>
+          <button id="rank-me-reset" class="rank-me-reset" type="button" hidden>もういちど とうろくできるように する</button>
+        </div>
+        <button id="rank-back" class="rank-back title-btn title-btn-ranking" type="button">もどる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ダイアログ表示用（名前入力・確認） -->
+  <div id="dialog-layer" class="hidden"></div>
+
+  <div id="toast" role="status"></div>
+
+  <audio id="bgm" src="assets/audio/bgm.WAV" loop preload="auto"></audio>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+  <script src="game.js?v=10"></script>
+  <script src="screens.js?v=3"></script>
+  <script src="players.js?v=6"></script>
+  <script src="players-screen.js?v=2"></script>
+  <script src="result.js?v=6"></script>
+  <script src="celebrate.js?v=1"></script>
+  <script src="ingame.js?v=1"></script>
+  <script src="ranking-screen.js?v=2"></script>
+  <script src="firebase-config.js?v=1"></script>
+  <script type="module" src="firebase-ranking.js?v=3"></script>
+  <script type="module" src="autosync.js?v=1"></script>
+
+</body>
+</html>
