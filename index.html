@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   
   <title>どうぶつぽんぽん｜もりのどうぶつ</title>
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
@@ -54,27 +54,20 @@
             <p>スコア：<span id="final-score">0</span></p>
         </div>
 
-        <!-- だれが あそんだ？（選んで「きろくする」を押すまで、誰のスコアにもならない） -->
+        <!-- だれの きろくか（なまえを タップで えらびなおせる）。「もういちど」「タイトルへ」で きろくされる -->
         <div id="result-player" class="result-player">
-            <p class="result-player-title">だれが あそんだ？</p>
-            <div id="result-list-wrap" class="result-list-wrap">
-                <ul id="result-player-list" class="result-player-list"></ul>
-                <!-- スクロールできるときだけ表示する、右端の細いスクロールバー（常時表示） -->
-                <div class="result-scroll-track" aria-hidden="true"><div class="result-scroll-thumb"></div></div>
-            </div>
-            <p id="result-scroll-hint" class="result-scroll-hint">↕ スクロールして ほかのひとも みる</p>
-            <p id="result-player-empty" class="result-player-empty">プレイヤーが まだ いないよ</p>
-            <button id="result-add-player" class="result-add-btn">＋ あたらしいプレイヤーを ついか</button>
-            <button id="result-confirm" class="result-confirm-btn">この ひとの きろくに する</button>
-            <p id="result-message" class="result-message" role="status"></p>
+            <p id="result-best-note" class="result-best-note" hidden>🎉 じこベスト こうしん！</p>
+            <button id="result-player-card" class="player-chip" type="button" aria-haspopup="dialog">
+                <span class="player-chip-label">プレイヤー</span>
+                <span id="result-player-name" class="player-chip-name"></span>
+                <span id="result-player-best" class="player-chip-best"></span>
+                <span class="player-chip-arrow" aria-hidden="true">▾</span>
+            </button>
+            <p id="result-guest-note" class="result-sub-note" hidden>ゲストのきろくは のこりません</p>
+            <p id="result-sync-note" class="result-sub-note waiting" hidden>ランキング とうろくまち</p>
         </div>
 
         <div class="result-actions">
-            <!-- オンライン登録（「きろくに する」を押したあとで、登録できる得点があるときだけ表示） -->
-            <div id="result-register" class="result-register" hidden>
-                <button id="result-register-btn" class="result-register-btn">🏆 みんなのランキングに とうろく</button>
-                <p id="result-register-status" class="result-register-status" role="status"></p>
-            </div>
             <button id="retry-button">もういちど あそぶ</button>
             <button id="to-title-button">タイトルへ</button>
         </div>
@@ -95,6 +88,13 @@
       </div>
     </div>
     <div class="title-menu">
+      <button id="title-player-card" class="player-chip title-player-card" type="button" aria-haspopup="dialog">
+        <span class="player-chip-label">プレイヤー</span>
+        <span id="title-player-name" class="player-chip-name"></span>
+        <span id="title-player-best" class="player-chip-best"></span>
+        <span class="player-chip-arrow" aria-hidden="true">▾</span>
+        <span id="title-player-note" class="player-chip-note" hidden></span>
+      </button>
       <button id="play-button" class="title-btn title-btn-play">あそぶ</button>
       <button id="ranking-button" class="title-btn title-btn-ranking">🏆 ランキング</button>
       <button id="players-button" class="title-btn title-btn-sub">👥 プレイヤー</button>
@@ -178,16 +178,16 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
   <script src="game.js?v=10"></script>
-  <script src="screens.js?v=3"></script>
-  <script src="players.js?v=6"></script>
-  <script src="players-screen.js?v=2"></script>
-  <script src="result.js?v=6"></script>
-  <script src="celebrate.js?v=1"></script>
+  <script src="players.js?v=7"></script>
+  <script src="players-screen.js?v=3"></script>
+  <script src="screens.js?v=4"></script>
+  <script src="result.js?v=7"></script>
+  <script src="celebrate.js?v=2"></script>
   <script src="ingame.js?v=1"></script>
-  <script src="ranking-screen.js?v=2"></script>
+  <script src="ranking-screen.js?v=3"></script>
   <script src="firebase-config.js?v=1"></script>
-  <script type="module" src="firebase-ranking.js?v=3"></script>
-  <script type="module" src="autosync.js?v=1"></script>
+  <script type="module" src="firebase-ranking.js?v=4"></script>
+  <script type="module" src="autosync.js?v=2"></script>
 
 </body>
 </html>

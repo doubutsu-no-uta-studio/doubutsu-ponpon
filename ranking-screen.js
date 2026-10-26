@@ -80,6 +80,12 @@
     updateScrollUi();
   }
 
+  // 順位の表記：1位は「🥇 1位」、2位は「🥈 2位」、3位は「🥉 3位」、4位以降は「4位」
+  function rankLabel(rank) {
+    const medal = rank === 1 ? "🥇 " : rank === 2 ? "🥈 " : rank === 3 ? "🥉 " : "";
+    return `${medal}${rank}位`;
+  }
+
   // 同点は同順位（1位、2位、2位、4位）：自分より高い得点の人数 + 1
   function ranksOf(list) {
     return list.map((entry) => 1 + list.filter((other) => other.score > entry.score).length);
@@ -104,13 +110,8 @@
       const row = el("li", "rank-row" + (isMine ? " mine" : "") + (isSelected ? " selected" : ""));
       row.dataset.id = entry.id;
 
-      // 1〜3位はメダル（同順位なら同じメダル）
-      const medal = rank === 1 ? "gold" : rank === 2 ? "silver" : rank === 3 ? "bronze" : "";
-      const pos = el("span", "rank-pos");
-      pos.append(
-        el("span", medal ? `rank-badge ${medal}` : "rank-badge", String(rank)),
-        el("span", "rank-suffix", "い")
-      );
+      // 1〜3位はメダル付き（同順位なら同じメダル）：「🥇 1位」「4位」
+      const pos = el("span", "rank-pos", rankLabel(rank));
 
       const name = el("span", "rank-name", entry.name);
       row.append(pos, name);
@@ -161,12 +162,15 @@
     for (const player of players) {
       const option = el("option", "", player.name);
       option.value = player.id;
-      option.selected = selected && selected.id === player.id;
+      option.selected = Boolean(selected) && selected.id === player.id;
       playerSelect.appendChild(option);
     }
 
-    playerSelect.hidden = players.length === 0;
-    document.querySelector(".rank-me-label").hidden = players.length === 0;
+    // ゲストは一番下
+    const guest = el("option", "", "ゲスト");
+    guest.value = "";
+    guest.selected = !selected;
+    playerSelect.appendChild(guest);
   }
 
   function setMe(parts, note = "", showReset = false) {
@@ -183,7 +187,7 @@
 
     if (!player) {
       standing = null;
-      setMe([el("span", "rank-me-text", "プレイヤーを つくると、じぶんの じゅんいが わかるよ")]);
+      setMe([el("span", "rank-me-text", "ゲストは ランキングに のらないよ")]);
       return;
     }
 
@@ -201,7 +205,7 @@
     }
 
     if (standing.entry) {
-      const rank = standing.rank ? `${standing.rank}い` : "－";
+      const rank = standing.rank ? rankLabel(standing.rank) : "－";
 
       setMe([
         el("span", "rank-me-rank", rank),
@@ -212,10 +216,18 @@
     }
 
     // サーバーに記録がない
+    if (player.ranked !== true) {
+      const text = player.ranked === false
+        ? "ランキングに さんかしていないよ"
+        : "ランキングに さんかするか きめていないよ";
+      setMe([el("span", "rank-me-text", text)], "「プレイヤー」の へんしゅうで かえられるよ");
+      return;
+    }
+
     const parts = [el("span", "rank-me-text", "まだ ランキングに のっていないよ")];
 
     if (info.bestScore > 0) {
-      parts.push(el("span", "rank-me-sub", `じこベスト ${info.bestScore}てん（みとうろく）`));
+      parts.push(el("span", "rank-me-sub", `じこベスト ${info.bestScore}てん（とうろくまち）`));
     }
 
     // この端末は「登録済み」と覚えているのに、サーバーには記録がない（消された場合など）
@@ -264,7 +276,7 @@
   // 登録待ちのあるプレイヤーを、1人ずつ表示する（だれの記録か分かるように、名前つき）
   function renderPending() {
     const items = Players.list()
-      .filter((p) => p.pendingScore > p.onlineScore)
+      .filter((p) => Players.getSyncInfo(p.id).needsSync && !Players.hasPendingDelete(p.id))
       .map((p) => ({ player: p, status: window.AutoSync ? window.AutoSync.getStatus(p.id) : { state: "waiting" } }));
 
     pendingList.textContent = "";
@@ -281,7 +293,8 @@
       const main = el("div", "rank-pending-main");
       main.append(
         el("span", "rank-pending-name", player.name),
-        el("span", "rank-pending-score", `${player.pendingScore}てん`)
+        el("span", "rank-pending-score",
+          player.pendingScore > player.onlineScore ? `${player.pendingScore}てん` : "なまえの へんこう")
       );
 
       const actions = el("div", "rank-pending-actions");
@@ -294,80 +307,16 @@
         actions.appendChild(retry);
       }
 
-      const cancel = el("button", "rank-pending-btn cancel", "とうろくを とりけす");
-      cancel.type = "button";
-      cancel.dataset.action = "cancel";
-      cancel.disabled = sending;   // 送信中は取り消せない（送信完了との競合を防ぐ）
-      actions.appendChild(cancel);
-
       row.append(main, el("p", `rank-pending-state ${status.state}`, pendingStateText(status)), actions);
       pendingList.appendChild(row);
     }
-  }
-
-  // 小さなお知らせ（OKだけの確認画面）
-  function notice(title, message) {
-    return PlayerUI.openDialog((box, closeDialog) => {
-      const ok = el("button", "dialog-ok", "わかった");
-      ok.type = "button";
-      ok.addEventListener("click", () => closeDialog(true));
-
-      const buttons = el("div", "dialog-buttons");
-      buttons.append(ok);
-
-      box.append(el("h3", "dialog-title", title), el("p", "dialog-message", message), buttons);
-      setTimeout(() => ok.focus(), 0);
-    });
-  }
-
-  async function cancelPending(id) {
-    const player = Players.get(id);
-    if (!player) return;
-
-    const agreed = await PlayerUI.openDialog((box, closeDialog) => {
-      const cancelButton = el("button", "dialog-cancel", "やめる");
-      const okButton = el("button", "dialog-ok dialog-danger", "とりけす");
-      cancelButton.type = "button";
-      okButton.type = "button";
-      cancelButton.addEventListener("click", () => closeDialog(false));
-      okButton.addEventListener("click", () => closeDialog(true));
-
-      const buttons = el("div", "dialog-buttons");
-      buttons.append(cancelButton, okButton);
-
-      box.append(
-        el("h3", "dialog-title", `「${player.name}」の とうろくを とりけす？`),
-        el("p", "dialog-message",
-          `つうしんが もどっても、${player.pendingScore}てんは ランキングに とうろくしないよ。` +
-          "じこベストは そのまま のこるよ。"),
-        buttons
-      );
-
-      // 間違えて取り消さないよう、最初は「やめる」を選んでおく
-      setTimeout(() => cancelButton.focus(), 0);
-    }).then((result) => result === true);
-
-    if (!agreed) return;
-
-    const result = window.AutoSync.cancel(id);
-
-    if (!result.ok) {
-      await notice("いま おくっているよ", "おくっている ところだから、おわってから もういちど ためしてね。");
-    } else if (result.saved === false) {
-      await notice("とりけせなかったかも", "この たんまつに ほぞんできなかったよ。ページを よみこむと、とうろくまちが もどることが あるよ。");
-    }
-
-    renderPending();
   }
 
   pendingList.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-action]");
     if (!button || button.disabled) return;
 
-    const id = button.closest(".rank-pending-row").dataset.id;
-
-    if (button.dataset.action === "cancel") cancelPending(id);
-    else window.AutoSync.retryNow(id);
+    window.AutoSync.retryNow(button.closest(".rank-pending-row").dataset.id);
   });
 
   // 自動再送の状態が変わったとき・自動で登録できたとき（開いている間だけ）
@@ -409,7 +358,8 @@
 
   // プレイヤーを切り替える（結果画面や管理画面と同じ「前回選んだプレイヤー」として覚える）
   playerSelect.addEventListener("change", () => {
-    Players.select(playerSelect.value);
+    if (playerSelect.value === "") Players.selectGuest();
+    else Players.select(playerSelect.value);
     renderList();
     loadStanding();
   });

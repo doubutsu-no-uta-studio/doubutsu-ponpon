@@ -2576,3 +2576,239 @@ body {
     font-size: 14px;
   }
 }
+
+
+/* =====================================
+   プレイヤーのカード・選択画面・ランキング参加の選択
+===================================== */
+
+/* タイトル・結果画面で共通の、小さなプレイヤーカード */
+.player-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  width: 100%;
+  min-height: 44px;                 /* 指で押しやすい大きさ */
+  padding: 8px 30px 8px 12px;
+  border-radius: 14px;
+  border: 3px solid #d9c08f;
+  background: rgba(255, 253, 247, 0.92);
+  color: #4a3a22;
+  text-align: left;
+}
+
+.player-chip:active {
+  background: #f1f8e6;
+}
+
+.player-chip-label {
+  flex: 0 0 100%;
+  font-size: 11px;
+  color: #8a7a58;
+}
+
+.player-chip-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 19px;
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-chip-best {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #8a7a58;
+}
+
+.player-chip-arrow {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8a7a58;
+}
+
+.player-chip-note {
+  flex: 0 0 100%;
+  font-size: 11px;
+  color: #a0702a;
+}
+
+.player-chip-note[hidden] {
+  display: none;
+}
+
+.title-player-card {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+#game-over-screen .result-player {
+  width: min(330px, 100%);
+  align-items: stretch;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+#game-over-screen .result-player .player-chip {
+  color: #4a3a22;
+}
+
+#game-over-screen .result-best-note {
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  color: #c9791a;
+}
+
+#game-over-screen .result-sub-note {
+  font-size: 12px;
+  text-align: center;
+  color: #6b5a3a;
+}
+
+#game-over-screen .result-sub-note.waiting {
+  color: #a0702a;
+}
+
+#game-over-screen [hidden] {
+  display: none;
+}
+
+/* プレイヤー選択画面（ダイアログ） */
+.picker-box {
+  max-height: calc(100% - 8px);
+}
+
+.picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 2px;
+  list-style: none;
+  max-height: min(42vh, 280px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 3px solid transparent;
+  background: #f6f1e2;
+  color: #4a3a22;
+  text-align: left;
+}
+
+.picker-row.selected {
+  border-color: #6fa75f;
+  background: #f1f8e6;
+}
+
+.picker-row.selected .player-check {
+  background: #6fa75f;
+  border-color: #6fa75f;
+}
+
+.picker-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-best {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #8a7a58;
+}
+
+.picker-guest {
+  background: #ece5d2;
+}
+
+.picker-empty {
+  padding: 8px;
+  font-size: 13px;
+  text-align: center;
+  color: #8a7a58;
+}
+
+.picker-add {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 2px dashed #b9a77f;
+  background: #fffdf7;
+  color: #6b5a3a;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* ランキング参加の選択（最初は、どちらも選ばれていない） */
+.rank-choice-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rank-choice-btn {
+  flex: 1;
+  min-height: 46px;
+  padding: 8px 6px;
+  border-radius: 14px;
+  border: 3px solid #d9c08f;
+  background: #fffdf7;
+  color: #6b5a3a;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.rank-choice-btn.selected {
+  border-color: #6fa75f;
+  background: #6fa75f;
+  color: #fff;
+}
+
+.rank-choice-notice {
+  margin: 4px 0 0;
+  min-height: 2.6em;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8a7a58;
+}
+
+.rank-choice-notice.on {
+  color: #a0502f;
+  font-weight: bold;
+}
+
+/* ランキングの順位：「🥇 1位」「4位」 */
+.rank-pos {
+  min-width: 68px;
+  font-size: 17px;
+  font-weight: bold;
+  color: #6b5a3a;
+  white-space: nowrap;
+}
+
+@media (max-height: 520px) {
+  .picker-list {
+    max-height: 30vh;
+  }
+}

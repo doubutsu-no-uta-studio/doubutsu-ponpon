@@ -94,7 +94,7 @@
         banner.appendChild(el("div", `cel-medal ${medal}`, String(job.rank)));
       }
 
-      banner.appendChild(el("div", "cel-title", `ランキング ${job.rank}い おめでとう！`));
+      banner.appendChild(el("div", "cel-title", `ランキング ${job.rank}位 おめでとう！`));
     } else {
       banner.appendChild(el("div", "cel-title", "じこベスト こうしん！"));
     }

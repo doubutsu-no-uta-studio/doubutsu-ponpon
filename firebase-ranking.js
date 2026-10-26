@@ -17,6 +17,17 @@
        → { ok:false, code:"offline"|"timeout"|"too-frequent"|"permission-denied"|..., message, retryable }
      await Ranking.fetchRank(score)   // 「それより高い得点の人数 + 1」（同点は同順位）
 
+   ランキング参加中のプレイヤーだけが送れる（Players の ranked が true で、削除待ちがないこと）。
+
+   オンライン記録の削除（本人の記録だけ。所有者のUIDが一致するときだけ消せる）:
+     await Ranking.deleteOnline({ id, ownerUid })
+       → { ok:true, code:"deleted"|"not-found"|"not-owner" }   （削除待ちを外してよい。
+            not-owner は、所有者UIDが別だと「明確に」確認できたときだけ）
+       → { ok:false, code:"offline"|"timeout"|"permission-denied"|... }  （削除待ちを残して再試行。
+            permission-denied は原因を確定できないので、所有者不一致とは扱わない）
+     送信中の登録があるときは、その完了を待ってから消す。
+     ※ 削除には Firestore のルールの変更が必要（firestore.rules.proposal を参照）
+
    ランキング一覧（読み取り専用。誰でも読める leaderboard から取得する）:
      await Ranking.fetchTop(20)
        → { ok:true, entries:[{ id, name, score, scoreAt }], fallback }   score の高い順、同点は scoreAt の早い順
@@ -58,6 +69,7 @@ const Ranking = {
   submit: null,
   fetchRank: null,
   isSubmitting: null,
+  deleteOnline: null,
   LIMITS,
   fetchTop: null,
   fetchPlayerEntry: null,
@@ -187,12 +199,14 @@ const MESSAGES = {
   "invalid-name": "この なまえは ランキングに つかえないよ。なまえを かえてね",
   "player-not-found": "プレイヤーが みつからないよ",
   "reload-needed": "ページを よみこみなおしてね。とうろくまちは のこっているよ",
+  "delete-pending": "ランキングから けす じゅんびが おわるまで、まってね",
+  "not-participating": "このプレイヤーは ランキングに さんかしていないよ",
   "unknown": "うまく おくれなかったよ。あとで もういちど ためしてね"
 };
 
 // 時間をおけば成功する可能性があるもの
 const RETRYABLE = new Set([
-  "not-connected", "unauthenticated", "offline", "timeout", "busy", "too-frequent", "unknown"
+  "not-connected", "unauthenticated", "offline", "timeout", "busy", "too-frequent", "unknown", "delete-pending"
 ]);
 
 function failure(code, extra = {}) {
@@ -406,6 +420,12 @@ async function runSubmit(playerId, entry) {
   const first = Players.get(playerId);
   if (!first) return failure("player-not-found");
 
+  // ランキングに参加していないプレイヤーの名前・得点は、送らない
+  if (first.ranked !== true) return failure("not-participating");
+
+  // オンラインの記録の削除待ちがある間は送らない（古い送信で、消した記録が再公開されないように）
+  if (Players.hasPendingDelete(playerId)) return failure("delete-pending");
+
   // 送る内容：送信待ちの得点、または名前の反映
   const info = Players.getSyncInfo(playerId);
   const hasNewScore = info.pendingScore > info.onlineScore;
@@ -440,6 +460,12 @@ async function runSubmit(playerId, entry) {
     inFlight.set(id, entry);
   };
   if (idChanged) rememberId();
+
+  // 通信を待っている間に、不参加にされたり削除されたりしていないか、もう一度確認する
+  const current = Players.get(id);
+  if (!current) return failure("player-not-found");
+  if (current.ranked !== true) return failure("not-participating");
+  if (Players.hasPendingDelete(id) || Players.hasPendingDelete(playerId)) return failure("delete-pending");
 
   // 自分が直前に書き込んだ場合は、通信せずに5秒の制限を判断する
   const wait = () => {
@@ -526,6 +552,69 @@ Ranking.submit = function submit(playerId) {
     });
 
   return entry.promise;
+};
+
+/* ---------- オンライン記録の削除 ---------- */
+
+// 本人の記録（管理用 players と公開用 leaderboard）を、1回のトランザクションで消す。
+// 所有者UIDが一致しない記録は消さない（他人の記録を消せない）。
+Ranking.deleteOnline = async function deleteOnline(entry) {
+  try {
+    const id = entry && entry.id;
+    if (typeof id !== "string" || id === "") return failure("player-not-found");
+
+    // 送信中の登録があれば、完了を待つ（そのあとに消せば、記録が残らない）
+    const running = inFlight.get(id);
+    if (running) await running.promise.catch(() => null);
+
+    if (navigator.onLine === false) return failure("offline");
+
+    const connection = await ensureConnected();
+    if (connection.ok === false) return connection;
+    const { uid } = connection;
+
+    // 記録した端末のUIDと違う（匿名ユーザーが変わった）ときは、消せない
+    if (entry.ownerUid && entry.ownerUid !== uid) {
+      console.warn("[Ranking] 別の匿名ユーザーが登録した記録のため、削除できません:", id);
+      return { ok: true, code: "not-owner" };
+    }
+
+    const db = await withTimeout(getFirestoreDb(), Ranking.config.timeoutMs);
+    const fs = firestoreModule;
+
+    const privateRef = fs.doc(db, "players", id);
+    const publicRef = fs.doc(db, "leaderboard", id);
+
+    // 削除待ちを外してよいのは、所有者UIDが「明確に」一致しないと確認できたときだけ。
+    // 読み取りや書き込みが permission-denied になった場合は、原因を確定できない
+    // （ルール未設定・ブロック・一時的な認証の問題など）ので、削除待ちを残して、あとで再試行する
+    const code = await withTimeout(
+      fs.runTransaction(db, async (tx) => {
+        const snapshot = await tx.get(privateRef);
+
+        if (!snapshot.exists()) return "not-found";
+
+        const remoteOwner = snapshot.data().ownerUid;
+        if (typeof remoteOwner === "string" && remoteOwner !== "" && remoteOwner !== uid) {
+          return "not-owner";   // 読めて、所有者が別のUIDだと確認できた
+        }
+        if (remoteOwner !== uid) return "owner-unknown";   // 所有者が読み取れない形式。消さずに残す
+
+        tx.delete(publicRef);
+        tx.delete(privateRef);
+        return "deleted";
+      }),
+      Ranking.config.timeoutMs
+    );
+
+    // 所有者を確認できない記録は、削除待ちを外さず、止めて報告する
+    if (code === "owner-unknown") return failure("unknown");
+
+    lastCommitAt.delete(id);
+    return { ok: true, code };
+  } catch (error) {
+    return classify(error);
+  }
 };
 
 // 順位：それより高い得点の人数 + 1（同点は同順位）
